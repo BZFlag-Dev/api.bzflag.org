@@ -1,0 +1,7 @@
+/vendor/
+/var/*
+!/var/logs/README.md
+/.idea/
+.pomm_cli_bootstrap.php
+settings.php
+/.php_cs.cache

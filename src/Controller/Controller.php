@@ -20,6 +20,7 @@
 
 namespace App\Controller;
 
+use App\Model\BZFlag\PublicSchema\UsersModel;
 use Monolog\Logger;
 use PommProject\ModelManager\Session;
 use Slim\Container;
@@ -41,5 +42,30 @@ class Controller
     public function &__get(string $name)
     {
         return $this->container->$name;
+    }
+
+    // Retrieve the internal user glue ID from a legacy BZID
+    public function getUserIDFromBZID($bzid)
+    {
+        // Fetch the user from the legacy database by bzid
+        $user = $this->legacydb->getUserByBZID($bzid);
+
+        // If the user doesn't exist or isn't active, bail out
+        if (!$user) {
+            return null;
+        }
+
+        // Get or create the glue record
+        $user_glue = $this->db
+            ->getModel(UsersModel::class)
+            ->findByBZID($user['bzid'])
+        ;
+
+        // This shouldn't fail
+        if (!$user_glue) {
+            return null;
+        }
+
+        return $user_glue['id'];
     }
 }

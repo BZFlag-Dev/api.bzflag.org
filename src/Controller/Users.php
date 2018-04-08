@@ -21,7 +21,6 @@
 namespace App\Controller;
 
 use App\Model\BZFlag\PublicSchema\OrganizationsModel;
-use App\Model\BZFlag\PublicSchema\UsersModel;
 use Slim\Http\Request;
 use Slim\Http\Response;
 
@@ -46,31 +45,17 @@ class Users extends Controller
 
     public function getOrganizationsByBZID(Request $request, Response $response, array $args)
     {
-        // Fetch the user from the legacy database by bzid
-        $user = $this->legacydb->getUserByBZID($args['bzid']);
+        $user_id = $this->getUserIDFromBZID($args['bzid']);
 
-        // If the user doesn't exist or isn't active, bail out
-        if (!$user) {
+        if ($user_id === null) {
             // TODO: Error message?
             return $response->withJson([], 404);
-        }
-
-        // Get or create the glue record
-        $user_glue = $this->db
-            ->getModel(UsersModel::class)
-            ->findByBZID($user['bzid'])
-        ;
-
-        // This shouldn't fail
-        if (!$user_glue) {
-            // TODO: Error message?
-            return $response->withJson([], 500);
         }
 
         // Retrieve a list of all organizations that the logged in user is associated with
         $organizations = $this->db
             ->getModel(OrganizationsModel::class)
-            ->findByOrganizationMember($user_glue['id'])
+            ->findByOrganizationMember($user_id)
             ->extract()
         ;
 
@@ -80,7 +65,7 @@ class Users extends Controller
             $data[] = [
                 'short_name' => $organization['short_name'],
                 'display_name' => $organization['display_name'],
-                'is_founder' => ($user_glue['id'] === $organization['founder']),
+                'is_founder' => ($user_id === $organization['founder']),
                 'is_hosting_admin' => $organization['hosting_admin'],
                 'is_group_admin' => $organization['group_admin'],
                 'is_group_manager' => $organization['group_manager']

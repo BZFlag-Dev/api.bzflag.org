@@ -32,16 +32,15 @@ class Organizations extends Controller
     {
         $validator = new Validator;
 
-        $legacyuser = null;
+        $user_id = null;
 
         // Establish rules
         $validator->required('founder', 'Founder')
             ->alnum()
-            ->callback(function ($bzid) use (&$legacyuser) {
-                $legacyuser = $this->legacydb->getUserByBZID($bzid);
+            ->callback(function ($bzid) use (&$user_id) {
+                $user_id = $this->getUserIDFromBZID($bzid);
 
-                // If the user doesn't exist, bail
-                if (!$legacyuser) {
+                if ($user_id === null) {
                     throw new InvalidValueException('Specified founder does not exist.', 'founder');
                 }
 
@@ -87,19 +86,11 @@ class Organizations extends Controller
 
         // Did all the rules pass validation?
         if ($result->isValid()) {
-            // Get the user glue record
-            $user = $this->findByBZID($legacyuser['bzid']);
-
-            // If the user does not exist, throw an error
-            if (!$user) {
-                return $response->withJson([], 500);
-            }
-
             // Try to add it to the DB
             $organization = $this->db
                 ->getModel(OrganizationsModel::class)
                 ->createAndSave([
-                    'founder' => $user['id'],
+                    'founder' => $user_id,
                     'short_name' => $data['short_name'],
                     'display_name' => $data['display_name']
                 ])
@@ -128,7 +119,7 @@ class Organizations extends Controller
 
     public function get(Request $request, Response $response, array $args)
     {
-        // Retrieve a list of all organizations that the logged in user is associated with
+        // Retrieve a specific organization by the short name
         $organization = $this->db
             ->getModel(OrganizationsModel::class)
             ->findWhere('short_name ~* $*', ['short_name' => $args['orgshortname']])

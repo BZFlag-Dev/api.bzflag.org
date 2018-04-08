@@ -39,7 +39,7 @@ $container['phpErrorHandler'] = function ($c) {
             ->withJson([
                 'errors' => ['Something bad happened.']
             ], 500)
-            ;
+        ;
     };
 };
 

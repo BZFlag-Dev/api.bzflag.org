@@ -21,6 +21,7 @@
 namespace App\Controller;
 
 use App\Model\BZFlag\PublicSchema\OrganizationsModel;
+use App\Model\BZFlag\PublicSchema\UsersModel;
 use Slim\Http\Request;
 use Slim\Http\Response;
 
@@ -38,25 +39,54 @@ class Users extends Controller
                 'username' => $user['username']
             ]);
         } else {
+            // TODO: Error message?
             return $response->withJson([], 404);
         }
     }
 
     public function getOrganizationsByBZID(Request $request, Response $response, array $args)
     {
+        // Fetch the user from the legacy database by bzid
+        $user = $this->legacydb->getUserByBZID($args['bzid']);
+
+        // If the user doesn't exist or isn't active, bail out
+        if (!$user) {
+            // TODO: Error message?
+            return $response->withJson([], 404);
+        }
+
+        // Get or create the glue record
+        $user_glue = $this->db
+            ->getModel(UsersModel::class)
+            ->findByBZID($user['bzid'])
+        ;
+
+        // This shouldn't fail
+        if (!$user_glue) {
+            // TODO: Error message?
+            return $response->withJson([], 500);
+        }
+
         // Retrieve a list of all organizations that the logged in user is associated with
         $organizations = $this->db
             ->getModel(OrganizationsModel::class)
-            ->findByOrganizationMember($args['bzid'])
+            ->findByOrganizationMember($user_glue['id'])
             ->extract()
         ;
 
+        // Build our dataset
+        $data = [];
         foreach ($organizations as &$organization) {
-            $isFounder = ($args['bzid'] === $organization['founder']);
-            unset($organization['founder']);
-            $organization['founder'] = $isFounder;
+            $data[] = [
+                'short_name' => $organization['short_name'],
+                'display_name' => $organization['display_name'],
+                'is_founder' => ($user_glue['id'] === $organization['founder']),
+                'is_hosting_admin' => $organization['hosting_admin'],
+                'is_group_admin' => $organization['group_admin'],
+                'is_group_manager' => $organization['group_manager']
+            ];
         }
 
-        return $response->withJson($organizations);
+        return $response->withJson($data);
     }
 }

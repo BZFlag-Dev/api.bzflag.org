@@ -71,4 +71,28 @@ class LegacyDatabase
 
         return $row;
     }
+
+    public function getUsersByUsername($username)
+    {
+        // Prepare the query
+        $statement = $this->link->prepare('SELECT user_id as bzid, username, user_email as email FROM bzbb3_users WHERE user_inactive_reason = 0 AND user_type <> 2 AND username_clean LIKE ? ORDER BY LENGTH(username_clean), username_clean LIMIT 100');
+
+        $username = "%{$username}%";
+
+        // Bind the BZID
+        // TODO: Clean up the value like phpBB3 does so this actually works
+        $statement->bind_param('s', $username);
+
+        // Execute the statement
+        $statement->execute();
+
+        // Try to fetch a row
+        $result = $statement->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
 }

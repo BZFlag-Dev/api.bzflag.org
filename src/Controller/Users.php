@@ -23,9 +23,61 @@ namespace App\Controller;
 use App\Model\BZFlag\PublicSchema\OrganizationsModel;
 use Slim\Http\Request;
 use Slim\Http\Response;
+use Particle\Validator\Validator;
 
 class Users extends Controller
 {
+    public function search(Request $request, Response $response, array $args)
+    {
+        $validator = new Validator;
+        $validator->required('username', 'Username')->lengthBetween(2, 32);
+        $validator->optional('exact_match', 'Exact Match')->integer()->between(0, 1);
+
+        // Grab input
+        $input = $request->getParams();
+
+        // If the data didn't parse, throw a 400
+        // TODO: Add error message?
+        if (!$input) {
+            return $response->withJson([], 400);
+        }
+
+        // Validate form data against rules
+        $result = $validator->validate($input);
+
+        // Did all the rules pass validation?
+        if ($result->isValid()) {
+            $data = [];
+
+            if ((int)$input['exact_match'] === 1) {
+                $user = $this->legacydb->getUserByUsername($input['username']);
+                if ($user) {
+                    $data[] = [
+                        'bzid' => $user['bzid'],
+                        'username' => $user['username']
+                    ];
+                }
+            } else {
+                $users = $this->legacydb->getUsersByUsername($input['username']);
+
+                foreach ($users as $user) {
+                    $data[] = [
+                        'bzid' => $user['bzid'],
+                        'username' => $user['username']
+                    ];
+                }
+            }
+
+            return $response->withJson($data);
+        } else {
+            // Get the errors
+            $errors = $result->getMessages();
+
+            // TODO: Format the errors
+            return $response->withJson($errors, 400);
+        }
+    }
+
     public function getByBZID(Request $request, Response $response, array $args)
     {
         // TODO: Provide access to the email address for private API use?

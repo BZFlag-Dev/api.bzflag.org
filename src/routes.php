@@ -24,6 +24,9 @@
 $app->group('/v1dev', function () {
     // Users
 
+    // Search for one or more users by name
+    $this->get('/users', 'App\Controller\Users:search');
+
     // Get information about a user by BZID
     $this->get('/users/{bzid}', 'App\Controller\Users:getByBZID');
 
